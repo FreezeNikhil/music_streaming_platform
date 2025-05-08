@@ -11,65 +11,72 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # Initialize Groq client
 client = Groq(api_key=GROQ_API_KEY)
 
-# Streamlit config
+# Streamlit setup
 st.set_page_config(page_title="🎵 AI Music Streamer", layout="centered")
 st.title("🎶 AI Music Streaming Platform")
 st.markdown("Powered by Streamlit, Groq LLaMA3 & JioSaavn API")
 
 # AI recommendation
 def get_song_recommendation(prompt):
-    chat_completion = client.chat.completions.create(
-        model="llama3-8b-8192",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return chat_completion.choices[0].message.content.strip()
+    try:
+        chat_completion = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return chat_completion.choices[0].message.content.strip()
+    except Exception as e:
+        return f"AI recommendation failed: {e}"
 
-# Search songs
+# Search functions with safe fallback
 def search_songs(query):
     url = f"https://saavn.dev/api/search/songs?query={query}"
     try:
         response = requests.get(url)
-        return response.json().get("data", {}).get("results", [])
+        if response.status_code == 200:
+            return response.json().get("data", {}).get("results", []) or []
     except:
-        return []
+        pass
+    return []
 
-# Search albums
 def search_albums(query):
     url = f"https://saavn.dev/api/search/albums?query={query}"
     try:
         response = requests.get(url)
-        return response.json().get("data", {}).get("results", [])
+        if response.status_code == 200:
+            return response.json().get("data", {}).get("results", []) or []
     except:
-        return []
+        pass
+    return []
 
-# Search playlists
 def search_playlists(query):
     url = f"https://saavn.dev/api/search/playlists?query={query}"
     try:
         response = requests.get(url)
-        return response.json().get("data", {}).get("results", [])
+        if response.status_code == 200:
+            return response.json().get("data", {}).get("results", []) or []
     except:
-        return []
+        pass
+    return []
 
 # User input
-user_input = st.text_input("Describe your mood or the type of Indian music you want to listen to 🎧")
+user_input = st.text_input("Describe your mood or the Indian music you want 🎧")
 
 if st.button("🎯 Get AI Music Recommendations") and user_input:
-    with st.spinner("Fetching music just for you..."):
+    with st.spinner("Thinking with AI..."):
         # AI Suggestions
-        prompt = f"Suggest some Indian songs, albums, and playlists based on this: {user_input}"
+        prompt = f"Suggest Indian songs, albums, and playlists based on: {user_input}"
         recommendation = get_song_recommendation(prompt)
         st.subheader("💡 AI Recommendation")
         st.write(recommendation)
 
-        # Songs
+        # SONGS
         st.subheader("🎵 Songs")
         songs = search_songs(user_input)
-        if songs:
+        if isinstance(songs, list) and songs:
             for song in songs[:5]:
                 title = song.get('name', 'Unknown Title')
                 artists = song.get('primaryArtists', 'Unknown Artist')
-                image = song.get('image', [{}] * 3)[2].get('link', '') if len(song.get('image', [])) > 2 else ''
+                image = song.get('image', [{}]*3)[2].get('link', '') if len(song.get('image', [])) > 2 else ''
                 audio_links = song.get('downloadUrl', [])
                 audio_url = audio_links[4].get('link') if len(audio_links) > 4 else None
 
@@ -79,16 +86,16 @@ if st.button("🎯 Get AI Music Recommendations") and user_input:
                 if image:
                     st.image(image)
         else:
-            st.warning("No songs found for this query.")
+            st.warning("No songs found for this input.")
 
-        # Albums
+        # ALBUMS
         st.subheader("💿 Albums")
         albums = search_albums(user_input)
-        if albums:
+        if isinstance(albums, list) and albums:
             for album in albums[:3]:
                 name = album.get('name', 'Unknown Album')
                 artist = album.get('primaryArtists', 'Unknown Artist')
-                image = album.get('image', [{}] * 3)[2].get('link', '') if len(album.get('image', [])) > 2 else ''
+                image = album.get('image', [{}]*3)[2].get('link', '') if len(album.get('image', [])) > 2 else ''
                 url = album.get('url', '#')
 
                 st.markdown(f"**{name}** by {artist}")
@@ -98,13 +105,13 @@ if st.button("🎯 Get AI Music Recommendations") and user_input:
         else:
             st.warning("No albums found.")
 
-        # Playlists
+        # PLAYLISTS
         st.subheader("📻 Playlists")
         playlists = search_playlists(user_input)
-        if playlists:
+        if isinstance(playlists, list) and playlists:
             for playlist in playlists[:3]:
                 title = playlist.get('title', 'Untitled Playlist')
-                image = playlist.get('image', [{}] * 3)[2].get('link', '') if len(playlist.get('image', [])) > 2 else ''
+                image = playlist.get('image', [{}]*3)[2].get('link', '') if len(playlist.get('image', [])) > 2 else ''
                 url = playlist.get('url', '#')
 
                 st.markdown(f"**{title}**")
