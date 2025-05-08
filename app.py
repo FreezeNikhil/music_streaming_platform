@@ -11,12 +11,12 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # Initialize Groq client
 client = Groq(api_key=GROQ_API_KEY)
 
-# Streamlit app configuration
+# Streamlit config
 st.set_page_config(page_title="🎵 AI Music Streamer", layout="centered")
 st.title("🎶 AI Music Streaming Platform")
 st.markdown("Powered by Streamlit, Groq LLaMA3 & JioSaavn API")
 
-# Function to get song recommendation from Groq
+# AI recommendation
 def get_song_recommendation(prompt):
     chat_completion = client.chat.completions.create(
         model="llama3-8b-8192",
@@ -24,64 +24,92 @@ def get_song_recommendation(prompt):
     )
     return chat_completion.choices[0].message.content.strip()
 
-# Function to search songs on JioSaavn
+# Search songs
 def search_songs(query):
     url = f"https://saavn.dev/api/search/songs?query={query}"
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url)
         return response.json().get("data", {}).get("results", [])
-    else:
+    except:
         return []
 
-# Function to search albums on JioSaavn
+# Search albums
 def search_albums(query):
     url = f"https://saavn.dev/api/search/albums?query={query}"
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url)
         return response.json().get("data", {}).get("results", [])
-    else:
+    except:
         return []
 
-# Function to search playlists on JioSaavn
+# Search playlists
 def search_playlists(query):
     url = f"https://saavn.dev/api/search/playlists?query={query}"
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url)
         return response.json().get("data", {}).get("results", [])
-    else:
+    except:
         return []
 
 # User input
-user_input = st.text_input("Describe your mood or the type of music you want to listen to 🎧")
+user_input = st.text_input("Describe your mood or the type of Indian music you want to listen to 🎧")
 
-if st.button("Get Recommendations") and user_input:
-    with st.spinner("Fetching recommendations..."):
-        # Get song recommendation from Groq
-        prompt = f"Suggest some Indian songs, albums, and playlists based on the following mood or description: {user_input}"
+if st.button("🎯 Get AI Music Recommendations") and user_input:
+    with st.spinner("Fetching music just for you..."):
+        # AI Suggestions
+        prompt = f"Suggest some Indian songs, albums, and playlists based on this: {user_input}"
         recommendation = get_song_recommendation(prompt)
-        st.subheader("🎯 AI Recommendation")
+        st.subheader("💡 AI Recommendation")
         st.write(recommendation)
 
-        # Search and display songs
+        # Songs
         st.subheader("🎵 Songs")
         songs = search_songs(user_input)
-        for song in songs[:5]:
-            st.markdown(f"**{song['name']}** by {song['primaryArtists']}")
-            st.audio(song['downloadUrl'][4]['link'], format="audio/mp3")
-            st.image(song['image'][2]['link'])
+        if songs:
+            for song in songs[:5]:
+                title = song.get('name', 'Unknown Title')
+                artists = song.get('primaryArtists', 'Unknown Artist')
+                image = song.get('image', [{}] * 3)[2].get('link', '') if len(song.get('image', [])) > 2 else ''
+                audio_links = song.get('downloadUrl', [])
+                audio_url = audio_links[4].get('link') if len(audio_links) > 4 else None
 
-        # Search and display albums
+                st.markdown(f"**{title}** by {artists}")
+                if audio_url:
+                    st.audio(audio_url, format="audio/mp3")
+                if image:
+                    st.image(image)
+        else:
+            st.warning("No songs found for this query.")
+
+        # Albums
         st.subheader("💿 Albums")
         albums = search_albums(user_input)
-        for album in albums[:3]:
-            st.markdown(f"**{album['name']}** by {album['primaryArtists']}")
-            st.image(album['image'][2]['link'])
-            st.markdown(f"[Listen on JioSaavn]({album['url']})")
+        if albums:
+            for album in albums[:3]:
+                name = album.get('name', 'Unknown Album')
+                artist = album.get('primaryArtists', 'Unknown Artist')
+                image = album.get('image', [{}] * 3)[2].get('link', '') if len(album.get('image', [])) > 2 else ''
+                url = album.get('url', '#')
 
-        # Search and display playlists
+                st.markdown(f"**{name}** by {artist}")
+                if image:
+                    st.image(image)
+                st.markdown(f"[🔗 Listen on JioSaavn]({url})")
+        else:
+            st.warning("No albums found.")
+
+        # Playlists
         st.subheader("📻 Playlists")
         playlists = search_playlists(user_input)
-        for playlist in playlists[:3]:
-            st.markdown(f"**{playlist['title']}**")
-            st.image(playlist['image'][2]['link'])
-            st.markdown(f"[Listen on JioSaavn]({playlist['url']})")
+        if playlists:
+            for playlist in playlists[:3]:
+                title = playlist.get('title', 'Untitled Playlist')
+                image = playlist.get('image', [{}] * 3)[2].get('link', '') if len(playlist.get('image', [])) > 2 else ''
+                url = playlist.get('url', '#')
+
+                st.markdown(f"**{title}**")
+                if image:
+                    st.image(image)
+                st.markdown(f"[🎧 Listen on JioSaavn]({url})")
+        else:
+            st.warning("No playlists found.")
