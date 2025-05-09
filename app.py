@@ -3,7 +3,7 @@ import requests
 import os
 import pandas as pd
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
@@ -14,16 +14,18 @@ if not groq_api_key:
     st.error("❌ GROQ_API_KEY not found. Please check your .env file.")
     st.stop()
 
-# Set up OpenAI client for Groq
-openai.api_key = groq_api_key
-openai.base_url = "https://api.groq.com/openai/v1"
+# Initialize OpenAI client for Groq
+client = OpenAI(
+    api_key=groq_api_key,
+    base_url="https://api.groq.com/openai/v1"
+)
 
-# Streamlit app title
+# Streamlit UI setup
 st.set_page_config(page_title="🎧 SmartMusic - AI Music Recommender", page_icon="🎶")
 st.title("🎧 SmartMusic: AI-Powered Indian Music Recommender")
 st.markdown("Powered by **Groq API + JioSaavn.dev**")
 
-# Function to get music prompt from Groq
+# Function to get AI music prompts
 def get_music_prompt(mood_or_genre):
     prompt = f"""
 You are a music assistant. Suggest 5 Indian songs or playlists based on the user's input: "{mood_or_genre}". 
@@ -32,7 +34,7 @@ Example: Arijit Singh, Romantic Hindi, Punjabi Workout, 90s Bollywood, Lo-Fi Hin
 Respond in a comma-separated list of 5.
 """
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="llama3-8b-8192",
             messages=[
                 {"role": "system", "content": "You're a helpful music assistant."},
@@ -40,7 +42,7 @@ Respond in a comma-separated list of 5.
             ],
             temperature=0.7
         )
-        reply = response.choices[0].message["content"]
+        reply = response.choices[0].message.content
         return [x.strip() for x in reply.split(",") if x.strip()]
     except Exception as e:
         st.error(f"❌ Groq API Error: {e}")
@@ -57,9 +59,10 @@ def search_songs(keyword):
         st.error(f"❌ Error fetching songs: {e}")
     return []
 
-# Input from user
+# User input
 user_input = st.text_input("🎵 Enter a mood, artist, or genre:", "romantic hindi")
 
+# On button click
 if st.button("🎯 Get AI Music Recommendations"):
     with st.spinner("Thinking like a DJ..."):
         suggestions = get_music_prompt(user_input)
@@ -76,12 +79,12 @@ if st.button("🎯 Get AI Music Recommendations"):
                 st.subheader("🎵 Songs (Play All Mode)")
                 song_data = []
 
-                for song in all_songs[:5]:
+                for song in all_songs[:5]:  # Limit to 5 songs
                     title = song.get('name', 'Unknown Title')
                     artists = song.get('primaryArtists', 'Unknown Artist')
                     image = song.get('image', [{}]*3)[2].get('link', '') if len(song.get('image', [])) > 2 else ''
                     audio_links = song.get('downloadUrl', [])
-                    
+
                     # Fallback to first available audio URL
                     audio_url = None
                     for quality in reversed(audio_links):
@@ -102,13 +105,12 @@ if st.button("🎯 Get AI Music Recommendations"):
                                 st.image(image, width=150)
                             st.audio(audio_url, format="audio/mp3")
 
-                # Download CSV
+                # Download button
                 st.markdown("📥 **Download Song Info**")
                 song_df = pd.DataFrame(song_data)
                 csv = song_df.to_csv(index=False).encode("utf-8")
                 st.download_button("⬇️ Download as CSV", data=csv, file_name="recommended_songs.csv", mime="text/csv")
 
-                # Info
                 st.info("ℹ️ Due to browser restrictions, audio autoplay is not supported. Please play each song manually.")
             else:
                 st.warning("⚠️ No songs found for the suggested themes.")
