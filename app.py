@@ -3,7 +3,7 @@ import requests
 import os
 import pandas as pd
 from dotenv import load_dotenv
-from openai import OpenAI
+import openai
 
 # Load environment variables
 load_dotenv()
@@ -15,10 +15,8 @@ if not groq_api_key:
     st.stop()
 
 # Set up OpenAI client for Groq
-client = OpenAI(
-    api_key=groq_api_key,
-    base_url="https://api.groq.com/openai/v1"
-)
+openai.api_key = groq_api_key
+openai.base_url = "https://api.groq.com/openai/v1"
 
 # Streamlit app title
 st.set_page_config(page_title="🎧 SmartMusic - AI Music Recommender", page_icon="🎶")
@@ -34,7 +32,7 @@ Example: Arijit Singh, Romantic Hindi, Punjabi Workout, 90s Bollywood, Lo-Fi Hin
 Respond in a comma-separated list of 5.
 """
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="llama3-8b-8192",
             messages=[
                 {"role": "system", "content": "You're a helpful music assistant."},
@@ -42,7 +40,7 @@ Respond in a comma-separated list of 5.
             ],
             temperature=0.7
         )
-        reply = response.choices[0].message.content
+        reply = response.choices[0].message["content"]
         return [x.strip() for x in reply.split(",") if x.strip()]
     except Exception as e:
         st.error(f"❌ Groq API Error: {e}")
@@ -83,7 +81,13 @@ if st.button("🎯 Get AI Music Recommendations"):
                     artists = song.get('primaryArtists', 'Unknown Artist')
                     image = song.get('image', [{}]*3)[2].get('link', '') if len(song.get('image', [])) > 2 else ''
                     audio_links = song.get('downloadUrl', [])
-                    audio_url = audio_links[4].get('link') if len(audio_links) > 4 else None
+                    
+                    # Fallback to first available audio URL
+                    audio_url = None
+                    for quality in reversed(audio_links):
+                        if quality.get('link'):
+                            audio_url = quality['link']
+                            break
 
                     if audio_url:
                         song_data.append({
