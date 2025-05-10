@@ -1,7 +1,7 @@
-streamlit
+
 openai
 python-dotenv
-requests
+
 pandas
 streamlit==1.35.0
 streamlit-player==0.1.4
