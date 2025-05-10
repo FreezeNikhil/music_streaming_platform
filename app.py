@@ -1,47 +1,48 @@
 import streamlit as st
-import streamlit.components.v1 as components
+from streamlit_player import st_player
+import requests
 
-st.set_page_config(page_title="AI Mood-Based Music Player", layout="centered")
+# Function to fetch songs from JioSaavn API based on mood
+def fetch_songs_by_mood(mood):
+    # Mapping moods to search queries
+    mood_queries = {
+        "Happy": "happy songs",
+        "Sad": "sad songs",
+        "Energetic": "energetic songs",
+        "Relaxed": "relaxing music"
+    }
+    query = mood_queries.get(mood, "top songs")
+    
+    # JioSaavn API endpoint for search
+    api_url = f"https://www.saavn.com/api.php?__call=autocomplete.get&query={query}&_format=json&_marker=0"
+    
+    try:
+        response = requests.get(api_url)
+        data = response.json()
+        songs = data.get('songs', {}).get('data', [])
+        return songs
+    except Exception as e:
+        st.error("Failed to fetch songs. Please try again later.")
+        return []
 
-st.title("🎵 AI Mood-Based Music Player")
+# Streamlit app layout
+st.title("🎶 Mood-Based Music Player")
+st.write("Select your current mood to get song recommendations.")
 
-# Step 1: Select Mood
-mood = st.selectbox("How are you feeling today?", ["Happy", "Sad", "Energetic", "Romantic", "Relaxed"])
+# Mood selection
+mood = st.selectbox("Choose your mood:", ["Happy", "Sad", "Energetic", "Relaxed"])
 
-# Step 2: Select type
-song_type = st.radio("What would you like to listen to?", ["Single Track", "Album", "Mix"])
-
-# YouTube links database
-songs = {
-    "Happy": {
-        "Single Track": ("Phir Se Ud Chala - Rockstar", "https://www.youtube.com/embed/VsQtduVb1FA"),
-        "Album": ("Zindagi Na Milegi Dobara Album", "https://www.youtube.com/embed/videoseries?list=PLFA4AB3B79564A152"),
-        "Mix": ("Happy Bollywood Mix", "https://www.youtube.com/embed/V1bFr2SWP1I"),
-    },
-    "Sad": {
-        "Single Track": ("Agar Tum Saath Ho - Tamasha", "https://www.youtube.com/embed/xRb8hxwN5zc"),
-        "Album": ("Sad Hits Bollywood", "https://www.youtube.com/embed/videoseries?list=PLFgquLnL59am3HeY8kOzRXztrYxvKkLk6"),
-        "Mix": ("Sad Hindi Mix", "https://www.youtube.com/embed/KPzFvVJaP1Q"),
-    },
-    "Energetic": {
-        "Single Track": ("Malhari - Bajirao Mastani", "https://www.youtube.com/embed/Zea-Iw7yLIE"),
-        "Album": ("Gully Boy Album", "https://www.youtube.com/embed/videoseries?list=PLsyeobzWxl7rMEZ1ze4p51RrS3vX5Yf4L"),
-        "Mix": ("Bollywood Workout Mix", "https://www.youtube.com/embed/28xjtYY6U_k"),
-    },
-    "Romantic": {
-        "Single Track": ("Tum Hi Ho - Aashiqui 2", "https://www.youtube.com/embed/Umqb9KENgmk"),
-        "Album": ("Romantic Bollywood 2023", "https://www.youtube.com/embed/videoseries?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI"),
-        "Mix": ("Romantic Hindi Mix", "https://www.youtube.com/embed/Lp_gE8TDS2k"),
-    },
-    "Relaxed": {
-        "Single Track": ("Shayad - Love Aaj Kal", "https://www.youtube.com/embed/EY-Jhynq0J8"),
-        "Album": ("Lo-fi Chill Bollywood", "https://www.youtube.com/embed/videoseries?list=PLzAUjD1I4H2GQ-WR3sKjZC3V1y82j4QCE"),
-        "Mix": ("Bollywood Lo-fi Mix", "https://www.youtube.com/embed/H-wz2B8Zr90"),
-    },
-}
-
-# Display selected track
-if mood and song_type:
-    track_title, youtube_link = songs[mood][song_type]
-    st.subheader(f"🎶 Now Playing: {track_title}")
-    components.iframe(youtube_link, height=360)
+# Fetch and display songs
+if mood:
+    st.subheader(f"Recommended {mood} Songs:")
+    songs = fetch_songs_by_mood(mood)
+    
+    if songs:
+        for song in songs[:10]:  # Display top 10 songs
+            song_title = song.get('title')
+            song_url = song.get('perma_url')
+            st.write(f"**{song_title}**")
+            if song_url:
+                st_player(song_url)
+    else:
+        st.write("No songs found for the selected mood.")
