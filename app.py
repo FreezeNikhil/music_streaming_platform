@@ -1,37 +1,48 @@
 import streamlit as st
 import requests
+import math
 
 st.set_page_config(page_title="🎧 iTunes Music Explorer", layout="centered")
-st.title("🎶 Music streaming platform made by tridev")
+st.title("🎶 Song Suggestions using iTunes API")
 
-# Search input
-search_term = st.text_input("Enter artist name, song, or album", value="Arijit Singh")
+# Input from user
+artist = st.text_input("Enter artist name", value="Arijit Singh")
+genre_filter = st.text_input("Optional: Filter by genre (e.g., Pop, Rock, Bollywood)")
 
-# Fetch songs from iTunes
-if search_term:
-    response = requests.get(f"https://itunes.apple.com/search", params={
-        "term": search_term,
+# Pagination
+songs_per_page = 10
+page = st.number_input("Page", min_value=1, step=1, value=1)
+
+if artist:
+    # Prepare query
+    query = artist + " " + genre_filter if genre_filter else artist
+
+    # Request up to 200 songs (iTunes max)
+    response = requests.get("https://itunes.apple.com/search", params={
+        "term": query,
         "media": "music",
-        "limit": 10
+        "entity": "musicTrack",
+        "limit": 200
     })
 
     data = response.json()
+    results = data.get("results", [])
 
-    if data["resultCount"] > 0:
-        song_titles = [f"{track['trackName']} - {track['artistName']}" for track in data["results"]]
-        selected_title = st.selectbox("Select a song", song_titles)
+    if results:
+        # Pagination logic
+        total_pages = math.ceil(len(results) / songs_per_page)
+        start = (page - 1) * songs_per_page
+        end = start + songs_per_page
+        current_songs = results[start:end]
 
-        selected_song = next(track for track in data["results"]
-                             if f"{track['trackName']} - {track['artistName']}" == selected_title)
+        for song in current_songs:
+            st.markdown(f"### {song['trackName']} - {song['artistName']}")
+            st.image(song['artworkUrl100'].replace("100x100", "500x500"), width=300)
+            st.markdown(f"**Album:** {song.get('collectionName', 'N/A')}")
+            st.markdown(f"**Genre:** {song.get('primaryGenreName', 'N/A')}")
+            st.audio(song['previewUrl'], format="audio/mp4")
+            st.markdown("---")
 
-        # Display song details
-        st.image(selected_song["artworkUrl100"].replace("100x100", "500x500"), width=300,
-                 caption=selected_song.get("collectionName", "Album Cover"))
-        st.markdown(f"**Track:** {selected_song['trackName']}")
-        st.markdown(f"**Artist:** {selected_song['artistName']}")
-        st.markdown(f"**Album:** {selected_song.get('collectionName', 'N/A')}")
-
-        # Audio player
-        st.audio(selected_song["previewUrl"], format="audio/mp4")
+        st.markdown(f"**Page {page} of {total_pages}**")
     else:
-        st.warning("No results found. Try another artist or song.")
+        st.warning("No songs found. Try another artist or genre.")
