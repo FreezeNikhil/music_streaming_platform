@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 st.set_page_config(page_title="🎧 iTunes Music Explorer", layout="centered")
-st.title("🎶 Song Suggestion using iTunes API")
+st.title("🎶 Music streaming platform made by tridev")
 
 # Search input
 search_term = st.text_input("Enter artist name, song, or album", value="Arijit Singh")
