@@ -3,7 +3,7 @@ import requests
 import math
 
 st.set_page_config(page_title="🎧 iTunes Music Explorer", layout="centered")
-st.title("🎶 Song Suggestions using iTunes API")
+st.title("🎶 Song Streaming platform ")
 
 # Input from user
 artist = st.text_input("Enter artist name", value="Arijit Singh")
