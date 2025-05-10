@@ -1,48 +1,37 @@
 import streamlit as st
+import requests
 
-# Song database with working mp3 sample links
-songs = [
-    {
-        "name": "Tum Hi Ho",
-        "artist": "Arijit Singh",
-        "album": "Aashiqui 2",
-        "cover": "https://c.saavncdn.com/430/Aashiqui-2-Hindi-2013-500x500.jpg",
-        "audio": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-    },
-    {
-        "name": "Shayad",
-        "artist": "Arijit Singh",
-        "album": "Love Aaj Kal",
-        "cover": "https://c.saavncdn.com/533/Love-Aaj-Kal-Hindi-2020-20200213151002-500x500.jpg",
-        "audio": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-    },
-    {
-        "name": "Kesariya",
-        "artist": "Arijit Singh",
-        "album": "Brahmāstra",
-        "cover": "https://c.saavncdn.com/387/Kesariya-From-Brahmastra-Hindi-2022-20220717131006-500x500.jpg",
-        "audio": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
-    }
-]
+st.set_page_config(page_title="🎧 iTunes Music Explorer", layout="centered")
+st.title("🎶 Song Suggestion using iTunes API")
 
-# Streamlit app
-st.set_page_config(page_title="🎵 Streamlit Music Player", layout="centered")
+# Search input
+search_term = st.text_input("Enter artist name, song, or album", value="Arijit Singh")
 
-st.title("🎶 Streamlit Music Streaming Player")
-st.markdown("Choose a song from the list below to start playing:")
+# Fetch songs from iTunes
+if search_term:
+    response = requests.get(f"https://itunes.apple.com/search", params={
+        "term": search_term,
+        "media": "music",
+        "limit": 10
+    })
 
-# Song selector
-song_titles = [f"{song['name']} - {song['artist']}" for song in songs]
-selected_title = st.selectbox("Select a Song", song_titles)
+    data = response.json()
 
-# Find selected song
-selected_song = next(song for song in songs if f"{song['name']} - {song['artist']}" == selected_title)
+    if data["resultCount"] > 0:
+        song_titles = [f"{track['trackName']} - {track['artistName']}" for track in data["results"]]
+        selected_title = st.selectbox("Select a song", song_titles)
 
-# Display song info
-st.image(selected_song["cover"], width=300, caption=selected_song["album"])
-st.markdown(f"**Title:** {selected_song['name']}")
-st.markdown(f"**Artist:** {selected_song['artist']}")
-st.markdown(f"**Album:** {selected_song['album']}")
+        selected_song = next(track for track in data["results"]
+                             if f"{track['trackName']} - {track['artistName']}" == selected_title)
 
-# Audio player
-st.audio(selected_song["audio"], format="audio/mp3", start_time=0)
+        # Display song details
+        st.image(selected_song["artworkUrl100"].replace("100x100", "500x500"), width=300,
+                 caption=selected_song.get("collectionName", "Album Cover"))
+        st.markdown(f"**Track:** {selected_song['trackName']}")
+        st.markdown(f"**Artist:** {selected_song['artistName']}")
+        st.markdown(f"**Album:** {selected_song.get('collectionName', 'N/A')}")
+
+        # Audio player
+        st.audio(selected_song["previewUrl"], format="audio/mp4")
+    else:
+        st.warning("No results found. Try another artist or song.")
