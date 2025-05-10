@@ -1,68 +1,48 @@
 import streamlit as st
-import requests
-import pandas as pd
 
-st.set_page_config(page_title="🎧 Debug: SmartMusic", page_icon="🎶")
-st.title("🎧 SmartMusic Debug Version")
-st.markdown("Testing direct JioSaavn.dev song search...")
+# Song database
+songs = [
+    {
+        "name": "Tum Hi Ho",
+        "artist": "Arijit Singh",
+        "album": "Aashiqui 2",
+        "cover": "https://c.saavncdn.com/430/Aashiqui-2-Hindi-2013-500x500.jpg",
+        "audio": "http://aac.saavncdn.com/430/5c5ea5cc00e3bff45616013226f376fe_320.mp4"
+    },
+    {
+        "name": "Shayad",
+        "artist": "Arijit Singh",
+        "album": "Love Aaj Kal",
+        "cover": "https://c.saavncdn.com/533/Love-Aaj-Kal-Hindi-2020-20200213151002-500x500.jpg",
+        "audio": "http://aac.saavncdn.com/533/6463bba690b2ec44b68890cdecc7b368_320.mp4"
+    },
+    {
+        "name": "Kesariya",
+        "artist": "Arijit Singh",
+        "album": "Brahmāstra",
+        "cover": "https://c.saavncdn.com/387/Kesariya-From-Brahmastra-Hindi-2022-20220717131006-500x500.jpg",
+        "audio": "http://aac.saavncdn.com/387/80d09c08d1c04b1a4d5d6d3a2e189771_320.mp4"
+    }
+]
 
-# Function to search songs via JioSaavn.dev API
-def search_songs(keyword):
-    url = f"https://saavn.dev/api/search/songs?query={keyword}"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            st.write("✅ API raw JSON:", data)  # Debug print
-            return data.get('data', {}).get('results', [])
-        else:
-            st.error(f"❌ API Error: {response.status_code}")
-    except Exception as e:
-        st.error(f"❌ Error fetching songs: {e}")
-    return []
+# Streamlit app
+st.set_page_config(page_title="🎵 Streamlit Music Player", layout="centered")
 
-# Hardcoded test keyword (bypassing Groq for now)
-keyword = st.text_input("🔍 Enter a song keyword to test:", "Arijit Singh")
+st.title("🎶 Streamlit Music Streaming Player")
+st.markdown("Choose a song from the list below to start playing:")
 
-if st.button("🚀 Test Song Fetching"):
-    with st.spinner("Contacting JioSaavn..."):
-        songs = search_songs(keyword)
-        if songs:
-            song_data = []
-            for song in songs[:5]:  # limit to 5
-                st.write("🎵 Raw Song Object:", song)  # Debug each song
+# Song selector
+song_titles = [f"{song['name']} - {song['artist']}" for song in songs]
+selected_title = st.selectbox("Select a Song", song_titles)
 
-                title = song.get('name', 'Unknown Title')
-                artists = song.get('primaryArtists', 'Unknown Artist')
+# Find selected song
+selected_song = next(song for song in songs if f"{song['name']} - {song['artist']}" == selected_title)
 
-                # Get image and audio link safely
-                image = ''
-                try:
-                    image = song.get('image', [{}]*3)[2].get('link', '')
-                except: pass
+# Display song info
+st.image(selected_song["cover"], width=300, caption=selected_song["album"])
+st.markdown(f"**Title:** {selected_song['name']}")
+st.markdown(f"**Artist:** {selected_song['artist']}")
+st.markdown(f"**Album:** {selected_song['album']}")
 
-                # Find audio link in downloadUrl list
-                audio_url = None
-                for quality in reversed(song.get('downloadUrl', [])):
-                    if quality.get('link'):
-                        audio_url = quality['link']
-                        break
-
-                if audio_url:
-                    song_data.append({
-                        "Title": title,
-                        "Artists": artists,
-                        "Audio URL": audio_url
-                    })
-                    with st.container():
-                        st.markdown(f"**🎧 {title}** by *{artists}*")
-                        if image:
-                            st.image(image, width=150)
-                        st.audio(audio_url, format="audio/mp3")
-            # Download CSV
-            st.markdown("📥 **Download Song Info**")
-            song_df = pd.DataFrame(song_data)
-            csv = song_df.to_csv(index=False).encode("utf-8")
-            st.download_button("⬇️ Download CSV", data=csv, file_name="songs.csv", mime="text/csv")
-        else:
-            st.warning("⚠️ No songs found for this keyword.")
+# Audio player
+st.audio(selected_song["audio"], format="audio/mp4", start_time=0)
